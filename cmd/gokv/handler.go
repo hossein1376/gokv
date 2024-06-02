@@ -2,10 +2,41 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func (db *database) parse(line string) error {
+	if line == "" {
+		return nil
+	}
+	switch cmd := strings.Fields(line); strings.ToLower(cmd[0]) {
+	case "exit":
+		os.Exit(0)
+		return nil
+
+	case "help":
+		printUsage()
+		return nil
+
+	case "set":
+		return db.handleSet(cmd[1:])
+
+	case "get":
+		return db.handleGet(cmd[1:])
+
+	case "save":
+		return db.handleSave(cmd[1:])
+
+	case "load":
+		return db.handleLoad(cmd[1:])
+
+	default:
+		return fmt.Errorf("unknown command: %s", cmd[0])
+	}
+}
 
 func (db *database) handleSet(cmd []string) error {
 	switch len(cmd) {
@@ -59,6 +90,22 @@ func (db *database) handleLoad(cmd []string) error {
 	default:
 		return fmt.Errorf("invalid number of arguments: %d", len(cmd))
 	}
+}
+
+func printUsage() {
+	msg := `Usage: gokv <command> [<args>]
+commands:
+	set <key> <value> [<unit> <duration>]
+	get <key>
+	save <file>
+	load <file>
+	help
+	exit
+duration unit:
+	ex = seconds
+	px = milliseconds
+Note: keywords are case insensitive.`
+	fmt.Println(msg)
 }
 
 func parseDurationUnit(d string) (time.Duration, error) {

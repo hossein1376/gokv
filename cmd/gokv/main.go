@@ -19,9 +19,12 @@ func main() {
 		ticker := time.NewTicker(60 * time.Second)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			if err := db.save(persistencePath); err != nil {
-				fmt.Printf("ERROR: %s\n", fmt.Sprintf("persisting database: %v", err))
+		for {
+			select {
+			case <-ticker.C:
+				if err := db.save(persistencePath); err != nil {
+					fmt.Printf("ERROR: %s\n", fmt.Sprintf("persisting database: %v", err))
+				}
 			}
 		}
 	}()
