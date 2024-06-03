@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+const (
+	OK  = "OK"
+	Nil = "<nil>"
+)
+
 func main() {
 	var persistencePath string
 	flag.StringVar(&persistencePath, "p", "./gokv-data", "Data persistence path including file name")
@@ -36,8 +41,16 @@ func main() {
 			fmt.Printf("ERROR: %s\n", fmt.Sprintf("reading line: %v", err))
 			continue
 		}
-		if err = db.parse(strings.TrimSpace(line)); err != nil {
-			fmt.Printf("ERROR: %s\n", err)
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
+
+		msg, err := db.parse(line)
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			continue
+		}
+		fmt.Println(msg)
 	}
 }

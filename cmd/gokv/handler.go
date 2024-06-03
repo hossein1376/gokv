@@ -8,18 +8,14 @@ import (
 	"time"
 )
 
-func (db *database) parse(line string) error {
-	if line == "" {
-		return nil
-	}
+func (db *database) parse(line string) (string, error) {
 	switch cmd := strings.Fields(line); strings.ToLower(cmd[0]) {
 	case "exit":
 		os.Exit(0)
-		return nil
+		return "", nil
 
 	case "help":
-		printUsage()
-		return nil
+		return handleUsage(), nil
 
 	case "set":
 		return db.handleSet(cmd[1:])
@@ -28,49 +24,60 @@ func (db *database) parse(line string) error {
 		return db.handleGet(cmd[1:])
 
 	case "save":
-		return db.handleSave(cmd[1:])
+		err := db.handleSave(cmd[1:])
+		if err != nil {
+			return "", err
+		}
+		return OK, nil
 
 	case "load":
-		return db.handleLoad(cmd[1:])
+		err := db.handleLoad(cmd[1:])
+		if err != nil {
+			return "", err
+		}
+		return OK, nil
 
 	default:
-		return fmt.Errorf("unknown command: %s", cmd[0])
+		return "", fmt.Errorf("unknown command: %s", cmd[0])
 	}
 }
 
-func (db *database) handleSet(cmd []string) error {
+func (db *database) handleSet(cmd []string) (string, error) {
 	switch len(cmd) {
 	case 2:
 		db.set(cmd[0], cmd[1], nil)
-		return nil
+		return OK, nil
 
 	case 4:
 		unit, err := parseDurationUnit(cmd[2])
 		if err != nil {
-			return err
+			return "", err
 		}
 		duration, err := strconv.ParseUint(cmd[3], 10, 64)
 		if err != nil {
-			return fmt.Errorf("invalid duration: %s", cmd[3])
+			return "", fmt.Errorf("invalid duration: %s", cmd[3])
 		}
 		expire := time.Now().Add(time.Duration(duration) * unit)
 
 		db.set(cmd[0], cmd[1], &expire)
-		return nil
+		return OK, nil
 
 	default:
-		return fmt.Errorf("invalid number of arguments: %d", len(cmd))
+		return "", fmt.Errorf("invalid number of arguments: %d", len(cmd))
 	}
 }
 
-func (db *database) handleGet(cmd []string) error {
+func (db *database) handleGet(cmd []string) (string, error) {
 	switch len(cmd) {
 	case 1:
-		fmt.Println(db.get(cmd[0]))
-		return nil
+		v, found := db.get(cmd[0])
+		if !found {
+			return Nil, nil
+		}
+		return v, nil
 
 	default:
-		return fmt.Errorf("invalid number of arguments: %d", len(cmd))
+		return "", fmt.Errorf("invalid number of arguments: %d", len(cmd))
 	}
 }
 
@@ -92,8 +99,8 @@ func (db *database) handleLoad(cmd []string) error {
 	}
 }
 
-func printUsage() {
-	msg := `Usage: gokv <command> [<args>]
+func handleUsage() string {
+	return `Usage: gokv <command> [<args>]
 commands:
 	set <key> <value> [<unit> <duration>]
 	get <key>
@@ -105,7 +112,6 @@ duration unit:
 	ex = seconds
 	px = milliseconds
 Note: keywords are case insensitive.`
-	fmt.Println(msg)
 }
 
 func parseDurationUnit(d string) (time.Duration, error) {

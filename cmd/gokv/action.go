@@ -34,7 +34,7 @@ func (db *database) set(k, v string, expire *time.Time) {
 	}
 }
 
-func (db *database) get(key string) string {
+func (db *database) get(key string) (string, bool) {
 	var (
 		v  value
 		ok bool
@@ -45,11 +45,11 @@ func (db *database) get(key string) string {
 		v, ok = db.DB[key]
 	}()
 	if !ok {
-		return ""
+		return "", false
 	}
 
 	if v.Expire == nil {
-		return v.Value
+		return v.Value, true
 	}
 	if v.Expire.Before(time.Now()) {
 		func() {
@@ -57,9 +57,9 @@ func (db *database) get(key string) string {
 			defer db.mu.Unlock()
 			delete(db.DB, key)
 		}()
-		return ""
+		return "", false
 	}
-	return v.Value
+	return v.Value, true
 }
 
 func (db *database) save(path string) error {
